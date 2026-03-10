@@ -137,6 +137,21 @@ python3 03_sql_and_udf_snowpark_connect.py
 | `01.02_session_setup_classic.py` vs `01.02_session_setup_snowpark_connect.py` | Session creation (PAT-based) | **YES** — only this changes |
 | `02_dataframe_ops_classic.py` vs `02_dataframe_ops_snowpark_connect.py` | select, filter, groupBy, join, window functions | **NO** — identical code |
 | `03_sql_and_udf_classic.py` vs `03_sql_and_udf_snowpark_connect.py` | spark.sql(), temp views, Python UDFs | **NO** — identical code |
+| `04_unsupported_classic.ipynb` vs `04_unsupported_snowpark_connect.ipynb` | Features that **DON'T** work on Snowpark Connect | N/A — shows failures |
+
+### Jupyter Notebooks — What's NOT supported
+
+The `04` pair are Jupyter notebooks that demonstrate features available on Classic Spark but **not on Snowpark Connect**:
+
+| Feature | Classic Notebook | Snowpark Connect Notebook |
+|---|:---:|:---:|
+| RDDs (parallelize, map, reduce) | Works | **FAILS** — no SparkContext |
+| Structured Streaming (readStream) | Works | **FAILS** — not supported |
+| MLlib (Pipeline, LogisticRegression) | Works | **FAILS** — pyspark.ml not supported |
+| SparkContext (broadcast, accumulator) | Works | **FAILS** — no SparkContext |
+| Repartition / Coalesce | Works | **No-op** — silently ignored |
+
+The Snowpark Connect notebook wraps each cell in `try/except` so it runs end-to-end, printing the actual error messages and Snowflake alternatives.
 
 ### Two ways to create a Snowpark Connect session
 
