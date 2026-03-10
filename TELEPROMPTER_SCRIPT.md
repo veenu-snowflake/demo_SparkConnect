@@ -247,7 +247,9 @@
 
 ### DEMO SETUP CONTEXT
 
-> I have three pairs of scripts. Each pair does the exact same thing — one runs on Classic Spark (local cluster), the other runs on Snowpark Connect (Snowflake engine).
+> I have three pairs of Python scripts and one pair of Jupyter notebooks. Each pair does the exact same thing — one runs on Classic Spark (local cluster), the other runs on Snowpark Connect (Snowflake engine).
+>
+> The scripts show what WORKS identically. The notebooks show what DOESN'T work — and what Snowflake offers instead.
 >
 > Let me walk you through them one by one.
 
@@ -359,6 +361,140 @@
 > *"Change the connection string, not the code."*
 
 ---
+
+### DEMO 4: WHAT'S NOT SUPPORTED — JUPYTER NOTEBOOK SHOWDOWN
+**Files: `04_unsupported_classic.ipynb` vs `04_unsupported_snowpark_connect.ipynb`**
+**⏱ ~5 min**
+
+> Now for the honest conversation. We've shown you what works. Let's show you what DOESN'T — and why that's actually okay.
+>
+> I've got two Jupyter notebooks open side by side. Same code. One runs on Classic Spark, the other on Snowpark Connect.
+>
+> We're going to test five features that are NOT supported on Snowpark Connect — and for each one, I'll show you what Snowflake offers instead.
+
+---
+
+#### CELL 1 — SESSION SETUP
+
+> First, the session. On the left — Classic Spark, `SparkSession.builder.master("local[*]")`. On the right — Snowpark Connect, two lines: `from snowflake import snowpark_connect` and `init_spark_session()`.
+>
+> Both sessions are up. Both can create DataFrames. No surprise there.
+>
+> *(Run session cells on both notebooks)*
+
+---
+
+#### CELL 2 — RDDs (parallelize, map, reduce, filter)
+
+> Alright, RDDs. This is Spark's original low-level API.
+>
+> On Classic Spark — I parallelize a list, run `map` to square every number, `filter` for evens, `reduce` to sum them up, `flatMap` for one-to-many. All works.
+>
+> *(Run the RDD cell on Classic — show output)*
+>
+> Now on Snowpark Connect — same code. And...
+>
+> **FAILS.** `sparkContext() is not implemented.`
+>
+> *(Run the RDD cell on Snowpark Connect — show the error)*
+>
+> Why? Because RDDs need `SparkContext`, which doesn't exist in the Spark Connect protocol. It was never part of the client-server split.
+>
+> But here's the thing — **nobody should be writing new RDD code anyway.** DataFrames are faster, optimizable, and they work everywhere. If you have legacy RDD code, rewrite it with the DataFrame API — it's a good cleanup regardless.
+>
+> *"RDDs are legacy. DataFrames are the future — and they're fully supported."*
+
+---
+
+#### CELL 3 — STRUCTURED STREAMING (readStream / writeStream)
+
+> Next — Structured Streaming. On Classic Spark, I create a rate source stream, write it to console, let it run for 3 seconds, and stop it. Works perfectly — you can see the batches printing.
+>
+> *(Run the Streaming cell on Classic — show the batch output)*
+>
+> On Snowpark Connect — `readStream` returns a DataFrame that says `isStreaming: False`. The streaming concept doesn't translate.
+>
+> *(Run the Streaming cell on Snowpark Connect — show the output)*
+>
+> The fix? Snowflake has purpose-built streaming tools:
+> - **Snowpipe Streaming** — for real-time ingestion.
+> - **Dynamic Tables** — for incremental materialization.
+> - **OpenFlow** — for streaming connectors from Kafka, CDC sources.
+>
+> *"Streaming belongs in OpenFlow. Processing belongs in Snowpark Connect."*
+
+---
+
+#### CELL 4 — MLlib (Pipeline, LogisticRegression)
+
+> This one's important for data science teams. On Classic Spark, I build a full ML pipeline — VectorAssembler, Logistic Regression, fit, predict. Works.
+>
+> *(Run the MLlib cell on Classic — show the predictions table)*
+>
+> On Snowpark Connect — `AssertionError`. The `pyspark.ml` module doesn't work.
+>
+> *(Run the MLlib cell on Snowpark Connect — show the error)*
+>
+> But Snowflake has a full ML stack:
+> - **Snowpark ML** — train models in Python, in Snowflake.
+> - **Model Registry** — version, manage, deploy models.
+> - **Cortex ML Functions** — built-in forecasting, anomaly detection, classification — zero code.
+>
+> *"MLlib is DIY ML. Snowpark ML is managed ML. Same Snowflake bill."*
+
+---
+
+#### CELL 5 — SparkContext (broadcast, accumulator, textFile)
+
+> SparkContext primitives — broadcast variables, accumulators, textFile. These are all low-level RDD-era tools.
+>
+> Classic Spark — all three work. Broadcast lookup resolves, accumulator counts, textFile reads.
+>
+> *(Run the SparkContext cell on Classic — show output)*
+>
+> Snowpark Connect — all three fail with the same error: `sparkContext() is not implemented`.
+>
+> *(Run the SparkContext cell on Snowpark Connect — show the errors)*
+>
+> The good news? You don't need any of these. Broadcast joins? Snowflake's optimizer does that automatically. Accumulators? Use SQL aggregations. TextFile? Use `spark.read.csv()` or `spark.read.text()` — those work fine.
+>
+> *"No tuning knobs to turn. Snowflake optimizes for you — that's the point."*
+
+---
+
+#### CELL 6 — REPARTITION / COALESCE
+
+> Last one — and this is the sneaky one. On Classic Spark, repartition and coalesce actually change the number of partitions. You can see it — default 10, repartition to 8, coalesce to 2.
+>
+> *(Run the Repartition cell on Classic — show partition counts)*
+>
+> On Snowpark Connect — the calls **don't error**. They're **silently ignored**. The data is still there, row count is still 100. But repartition and coalesce did nothing.
+>
+> *(Run the Repartition cell on Snowpark Connect — show output)*
+>
+> And that's actually the RIGHT behavior. Snowflake manages data distribution automatically. You don't need to think about partition counts, shuffle sizes, or data skew. The optimizer handles it.
+>
+> *"No tuning knobs to turn. Snowflake optimizes for you — that's the point."*
+
+---
+
+#### NOTEBOOK SUMMARY
+
+> So here's the honest scorecard:
+>
+> | Feature | Classic Spark | Snowpark Connect | Snowflake Alternative |
+> |---|:---:|:---:|---|
+> | RDDs | Works | FAILS | DataFrame API |
+> | Structured Streaming | Works | FAILS | Snowpipe Streaming / Dynamic Tables |
+> | MLlib | Works | FAILS | Snowpark ML / Cortex ML |
+> | SparkContext (broadcast, accumulator) | Works | FAILS | Snowflake optimizer handles it |
+> | Repartition / Coalesce | Works | No-op (silent) | Snowflake auto-optimizes |
+>
+> The takeaway: **If your code is DataFrames + SQL + Python UDFs — it works with zero changes.** If it uses RDDs, Streaming, or MLlib — those parts need Snowflake-native replacements. But those replacements are often *better* than what you had.
+>
+> *"99% of real-world Spark code works. The 1% has documented workarounds."*
+
+---
 ---
 
 ## PART 3: WRAP-UP
@@ -409,4 +545,4 @@
 
 **END OF SCRIPT**
 
-*Total estimated time: ~20–25 min (12–15 min pitch + 8–10 min demo)*
+*Total estimated time: ~25–30 min (12–15 min pitch + 13–15 min demo)*
