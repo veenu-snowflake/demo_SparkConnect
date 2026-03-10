@@ -96,9 +96,5 @@ employees.select(
 ).orderBy("name_len").show()
 
 
-# ===== 5. WHAT'S NOT SUPPORTED ON SNOWPARK CONNECT =====
-print("5. Features NOT available on Snowpark Connect")
-
-
 spark.stop()
 print("Done.")
