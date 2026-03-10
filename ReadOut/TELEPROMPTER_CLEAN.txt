@@ -1,14 +1,3 @@
-SNOWPARK CONNECT FOR APACHE SPARK
-TELEPROMPTER SCRIPT - PITCH + LIVE DEMO
-
-
-========================================
-PART 1: THE PITCH
-========================================
-
-
-[SLIDE 1 - TITLE + PAIN POINTS]
-
 Hey everyone, thanks for joining.
 
 Today I want to talk about something that solves a very real pain point for anyone running Spark.
