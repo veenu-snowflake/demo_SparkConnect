@@ -1,0 +1,301 @@
+SNOWPARK CONNECT FOR APACHE SPARK
+LIVE DEMO — TELEPROMPTER SCRIPT
+
+
+=
+INTRO
+=
+
+
+Alright, enough slides. Let me show you this for real.
+
+I have got a side-by-side comparison set up. Four demo sets. Three pairs of Python scripts and one pair of Jupyter notebooks.
+
+In each pair, one runs on Classic Spark with a local cluster. The other runs on Snowpark Connect with Snowflake. The code is identical except for the session setup.
+
+The first three sets show what works. The fourth set, the notebooks, shows what does not work and what Snowflake offers instead.
+
+Let us walk through them.
+
+
+
+DEMO SET 1 — SESSION SETUP
+
+Files: 01_session_setup_classic.py  |  01_session_setup_snowpark_connect.py
+
+Let us start with the absolute basics. How do you create a Spark session?
+
+[ACTION: Open both files side by side]
+
+On the Classic Spark side, look at the setup.
+
+    spark = SparkSession.builder
+        .master("local[*]")
+        .appName("Classic Spark Demo")
+        .config("spark.sql.shuffle.partitions", "4")
+        .getOrCreate()
+
+You are telling Spark: here is my cluster, here is my app name, here is how many shuffle partitions I want. You are configuring infrastructure before you have written a single line of business logic.
+
+Now look at the Snowpark Connect side.
+
+    from snowflake import snowpark_connect
+    spark = snowpark_connect.init_spark_session()
+
+That is it. Two lines. It reads your Snowflake connection from a config file, connects to a warehouse, and you are ready to go.
+
+Both scripts then do the exact same thing. Create a DataFrame with two rows, call show, print the result.
+
+[ACTION: Run 01_session_setup_classic.py]
+
+You see it. id 1 hello, id 2 world. Running on your local JVM.
+
+[ACTION: Run 01_session_setup_snowpark_connect.py]
+
+Same output. Same DataFrame. Same data. But this one ran on a Snowflake warehouse.
+
+From here on out, the only thing that ever changes is those first few lines. Everything else is identical.
+
+Size a warehouse, not a cluster.
+
+
+
+DEMO SET 2 — DATAFRAME OPERATIONS
+
+Files: 02_dataframe_ops_classic.py  |  02_dataframe_ops_snowpark_connect.py
+
+This is the fun part. This is where it gets real. I am going to run seven different DataFrame operations. These are the things you do every single day in Spark.
+
+[ACTION: Open both files side by side]
+
+Before I run anything, look at the two files. Scroll through them. The only difference is the session setup at the top. Everything else, and I mean everything, is character for character identical.
+
+Let me walk you through what we are testing.
+
+One. createDataFrame. We create an employees table with six people across Engineering, Marketing, and Sales. And a departments lookup table. Basic stuff.
+
+Two. Select and filter. We pull name, department, salary and filter for anyone earning over 100K. Standard data wrangling.
+
+Three. withColumn. We add a derived column, a 10 percent bonus calculated from salary. This is the kind of transformation every ETL pipeline does.
+
+Four. groupBy and agg. We group by department and calculate headcount, average salary, and max salary. Classic aggregation pattern.
+
+Five. Join. We inner join employees to departments on the department name. This is where a lot of Spark jobs spend their time.
+
+Six. orderBy. Simple sort by salary descending.
+
+Seven. Window functions. This is the advanced one. We partition by department, rank employees within each department by salary, and calculate the department average. Window functions are usually the first thing people ask about because they are hard to optimize on Spark.
+
+Now let me run them.
+
+[ACTION: Run 02_dataframe_ops_classic.py]
+
+All seven operations complete. You see the outputs. Alice and Bob in Engineering, Frank in Sales for high earners. The bonus calculations. The department stats. The joined data with building locations. The rankings.
+
+[ACTION: Run 02_dataframe_ops_snowpark_connect.py]
+
+Same results. Same numbers. Same output. Every single row matches.
+
+But one ran on your local JVM with manually configured shuffle partitions. The other ran on Snowflake's vectorized engine with auto-scaling, built-in governance, and per-second billing.
+
+No tuning knobs to turn. Snowflake optimizes for you. That is the point.
+
+And notice something. I did not have to think about partition keys, or shuffle behavior, or how the join strategy should work. On Classic Spark you would be tuning broadcast thresholds, adjusting spark.sql.shuffle.partitions, maybe adding repartition hints. Here? None of that. Snowflake just handles it.
+
+
+
+DEMO SET 3 — SPARK SQL AND PYTHON UDFs
+
+Files: 03_sql_and_udf_classic.py  |  03_sql_and_udf_snowpark_connect.py
+
+This is the one that usually surprises people. We are going to test SQL and custom Python logic.
+
+[ACTION: Open both files side by side]
+
+Again, look at the code. Identical except for session setup. Let me walk through what we are testing.
+
+First, spark.sql. We register the employees DataFrame as a temp view. Then we run a SQL query that groups by department, counts headcount, and calculates average salary. This is standard Spark SQL. Nothing exotic.
+
+Second, chained SQL with temp views. We run a CASE statement to classify employees into Senior, Mid, and Junior levels based on salary. Then we create another temp view from that result and query it. This is how real pipelines work. You chain SQL transformations through temp views.
+
+Third, Python UDFs. This is where it gets interesting. We define a UDF called classify_salary that takes a salary and returns HIGH, MEDIUM, or LOW. We decorate it with @F.udf, standard PySpark UDF syntax. Then we apply it to the DataFrame.
+
+Fourth, another UDF. This one calculates name length. Simple function, but it proves that custom Python logic runs on Snowflake without changes.
+
+One thing I will call out before I run these. On Classic Spark, UDFs are serialized immediately when you define them. On Snowpark Connect, they are lazily serialized. What does that mean practically? If there is a serialization or import error, you will see it when you call show or collect, not when you define the UDF. The code is identical. Just a slight timing difference on when errors surface. Something to be aware of during debugging.
+
+[ACTION: Run 03_sql_and_udf_classic.py]
+
+Department stats from SQL. Employee levels from the CASE statement. Salary bands from the UDF. Name lengths from the second UDF. All good.
+
+[ACTION: Run 03_sql_and_udf_snowpark_connect.py]
+
+Same SQL. Same UDFs. Same results. Different engine.
+
+And the Snowpark Connect version also prints a handy reference at the end showing what is NOT supported. RDDs, Structured Streaming, MLlib, GraphX, Delta Lake, Avro, ORC, SparkContext, Java and Scala UDFs. But everything we just ran, DataFrames, SQL, Python UDFs, that all works perfectly.
+
+Write Spark SQL, run on Snowflake. No translation needed.
+
+
+
+DEMO SET 4 — WHAT IS NOT SUPPORTED (JUPYTER NOTEBOOKS)
+
+Files: 04_unsupported_classic.ipynb  |  04_unsupported_snowpark_connect.ipynb
+
+Okay, now let us have the honest conversation. We have shown you everything that works. Let me show you what does not work, and honestly, why that is totally fine.
+
+I have got two Jupyter notebooks open side by side. Same code in both. One runs on Classic Spark, the other on Snowpark Connect. We are going to test five things.
+
+[ACTION: Open both notebooks side by side]
+
+
+--- CELL 1: SESSION SETUP ---
+
+First, let us get both sessions up.
+
+Classic Spark on the left. It creates a SparkSession with local master, prints the version, confirms SparkContext is available.
+
+Snowpark Connect on the right. It calls snowpark_connect.init_spark_session(), creates a quick test DataFrame and calls show to confirm it is working.
+
+[ACTION: Run session cells on both notebooks]
+
+Both are up. Both can create DataFrames. No surprises here.
+
+
+--- CELL 2: RDDs ---
+
+Okay, RDDs. This is Spark's original low-level API. The stuff from 2012. Parallelize, map, filter, reduce, flatMap.
+
+On Classic Spark, everything works.
+
+[ACTION: Run the RDD cell on Classic notebook]
+
+You see it. Squared numbers, filtered evens, a sum of 55, a flatMap result. All good.
+
+Now the same code on Snowpark Connect.
+
+[ACTION: Run the RDD cell on Snowpark Connect notebook]
+
+And it fails. SparkContext is not implemented. That is because RDDs need SparkContext, which was never part of the Spark Connect protocol. When Apache Spark split into client and server, they intentionally left SparkContext on the server side only.
+
+But let us be real. Nobody should be writing new RDD code in 2026. DataFrames are faster, they are optimizable, and they work everywhere. If you have legacy RDD code, this is actually a great excuse to modernize it.
+
+RDDs are legacy. DataFrames are the future. And they are fully supported.
+
+
+--- CELL 3: STRUCTURED STREAMING ---
+
+Next up, Structured Streaming.
+
+On Classic Spark, I set up a rate source that generates 5 rows per second. I write to console, let it run for 3 seconds, and stop.
+
+[ACTION: Run the Streaming cell on Classic notebook]
+
+You can see the batches coming through. Batch 0, Batch 1, Batch 2. Timestamps and values. Classic Spark Streaming working perfectly.
+
+On Snowpark Connect, the same readStream call does not do what you expect. It either fails outright or returns something that does not actually stream.
+
+[ACTION: Run the Streaming cell on Snowpark Connect notebook]
+
+And that makes sense. Streaming is a fundamentally different execution model. It is continuous, not batch. Snowpark Connect is built for batch DataFrame processing.
+
+But here is the thing. Snowflake has purpose-built tools for streaming. Snowpipe Streaming for real-time ingestion into Snowflake. Dynamic Tables for incremental materialization. OpenFlow for Kafka connectors and CDC from databases.
+
+Streaming belongs in OpenFlow. Processing belongs in Snowpark Connect. Best of both worlds.
+
+
+--- CELL 4: MLlib ---
+
+This one matters if you have data science teams using Spark.
+
+On Classic Spark, I build a full ML pipeline. VectorAssembler to combine features. Logistic Regression for classification. Fit the model. Transform to get predictions.
+
+[ACTION: Run the MLlib cell on Classic notebook]
+
+All six rows get predictions. Label 0 predicted as 0. Label 1 predicted as 1. The model works.
+
+On Snowpark Connect, it fails. pyspark.ml is not supported.
+
+[ACTION: Run the MLlib cell on Snowpark Connect notebook]
+
+But Snowflake has you covered. Snowpark ML lets you train models in Python right inside Snowflake. Model Registry lets you version and deploy them. Cortex ML Functions give you built-in forecasting, anomaly detection, and classification with literally zero code.
+
+MLlib is do-it-yourself ML. Snowpark ML is managed ML. Same Snowflake bill.
+
+
+--- CELL 5: SPARKCONTEXT (Broadcast, Accumulator, textFile) ---
+
+SparkContext primitives. These are low-level tools from the RDD era.
+
+On Classic Spark, broadcast variables let you share a lookup dictionary across all workers. Accumulators let you count things across distributed tasks. And textFile reads a file into an RDD for word count.
+
+[ACTION: Run the SparkContext cell on Classic notebook]
+
+Broadcast lookup works. Apple, Banana, Cherry. Accumulator counts to 5. Word count gives you hello 2, world 1, foo 1, bar 1, spark 1. All good.
+
+On Snowpark Connect, all three fail with the same error. SparkContext is not implemented.
+
+[ACTION: Run the SparkContext cell on Snowpark Connect notebook]
+
+But you really do not need any of these. Broadcast joins? Snowflake's optimizer does that automatically. If one side of a join is small enough, Snowflake broadcasts it without you asking. Accumulators? Just use SQL aggregations or DataFrame agg functions. Reading text files? spark.read.csv or spark.read.text works perfectly fine on Snowpark Connect. You just do not need the low-level SparkContext version.
+
+
+--- CELL 6: REPARTITION AND COALESCE ---
+
+Last one, and this is a sneaky one.
+
+On Classic Spark, repartition and coalesce actually change the number of partitions. Watch.
+
+[ACTION: Run the Repartition cell on Classic notebook]
+
+Default partitions: 10. After repartition 8: 8. After coalesce 2: 2. You can see it physically changing the data distribution.
+
+On Snowpark Connect, the same calls do not throw an error. They just silently do nothing. The data is still there. Row count is still 100. But the partition changes never happened.
+
+[ACTION: Run the Repartition cell on Snowpark Connect notebook]
+
+And honestly, that is the right behavior. In Snowflake, you should never have to think about partition counts, shuffle sizes, or data skew. The optimizer handles all of that automatically. Micro-partitioning, pruning, adaptive query execution. It is all built in.
+
+No tuning knobs to turn. Snowflake optimizes for you. That is the point.
+
+
+
+DEMO WRAP-UP
+
+
+So here is the honest scorecard.
+
+Session setup. Works on both. Only difference is two lines versus five lines.
+
+DataFrame operations. createDataFrame, select, filter, withColumn, groupBy, join, orderBy, window functions. All identical. All work perfectly on both.
+
+Spark SQL. Temp views, chained queries, CASE statements, aggregations. Identical. Works on both.
+
+Python UDFs. classify_salary, name_length. Identical code. Works on both. Just remember the lazy serialization difference when debugging.
+
+RDDs. Work on Classic. Fail on Snowpark Connect. Use the DataFrame API instead. You should be doing this anyway.
+
+Structured Streaming. Works on Classic. Not supported on Snowpark Connect. Use Snowpipe Streaming, Dynamic Tables, or OpenFlow.
+
+MLlib. Works on Classic. Not supported on Snowpark Connect. Use Snowpark ML or Cortex ML.
+
+SparkContext stuff. Broadcast, accumulators, textFile. Works on Classic. Not available on Snowpark Connect. Snowflake handles broadcasts automatically. Use DataFrame operations for the rest.
+
+Repartition and Coalesce. Works on Classic. Silently ignored on Snowpark Connect. Snowflake auto-optimizes. You never needed to think about this anyway.
+
+Bottom line. If your code uses DataFrames, SQL, and Python UDFs, it works with zero changes. That covers roughly 85 to 90 percent of real-world Spark workloads. The remaining 10 to 15 percent, RDDs, Streaming, MLlib, those parts need Snowflake-native replacements. But honestly, those replacements are usually better than what you had.
+
+Change the connection string, not the code.
+
+Any questions?
+
+
+
+END OF DEMO SCRIPT
+
+
+Total demo time: approximately 12 to 15 minutes.
+Set 1 (Session Setup): 2 minutes
+Set 2 (DataFrame Ops): 4 minutes
+Set 3 (SQL & UDFs): 3 minutes
+Set 4 (Unsupported - Notebooks): 5 minutes

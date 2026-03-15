@@ -1,479 +1,339 @@
 SNOWPARK CONNECT FOR APACHE SPARK
-TELEPROMPTER SCRIPT
+TELEPROMPTER SCRIPT (Updated Deck)
 
 
-Slides 1, 2, 3 are HIDDEN. They are internal qualification slides. You will NOT see them in the presentation. Your deck starts directly on Slide 4.
+SLIDE 1 - AGENDA
 
+Hey everyone, thanks for joining. Really excited about this one.
 
-SLIDE 4 - TITLE SLIDE (Snowpark Connect for Apache Spark - Feature Overview)
+So here is what we are going to cover today. I will start with some real challenges that every Spark users deals with. Then I will introduce Snowpark Connect for Apache Spark, which is our answer to those challenges. We will look at how it actually works under the hood. Then some feature highlights, real POC results and performance numbers, how to identify the right workloads, and finally some success stories from customers who are already running this in production.
 
-Hey everyone, thanks for being here.
+And if we have time, I have got a live demo ready as well.
 
-So today, I want to walk you through something pretty exciting. It is called Snowpark Connect for Apache Spark.
+Let us jump in.
 
-And here is the one-liner I want you to remember. Your Spark code, Snowflake's engine. Zero rewrite, zero clusters.
 
-That is the whole pitch. You keep your PySpark code exactly as it is, but instead of running it on a Spark cluster, you run it on Snowflake. No code changes. No clusters to manage.
+SLIDE 2 - SAFE HARBOR
 
-It has been generally available since November 2025. So this is not a preview, this is production-ready stuff.
+Quick safe harbor. Standard legal disclaimers. Forward-looking statements, roadmap items are not commitments, you know the drill. Let us move on to the good stuff.
 
 
-SLIDE 5 - SAFE HARBOR
+SLIDE 3 - CHALLENGES WITH APACHE SPARK (Section Header)
 
-Quick safe harbor slide. Standard legal disclaimers. Forward-looking statements, roadmap items are not promises, you know the drill. Let us move on.
+Alright, so let us start with the problem. And I think most of you will recognize this immediately.
 
 
-SLIDE 6 - CHALLENGES AT SCALE (Apache Spark Data Pipelines)
+SLIDE 4 - APACHE SPARK DATA PIPELINES: CHALLENGES AT SCALE
 
-Okay so let us talk about the problem first. Why does this matter?
+If you are running Spark today, this picture probably looks very familiar.
 
-If you are running Spark today, you probably know this pain. You have got your data sitting nice and safe in Snowflake or S3. But then to process it, you have to pull it out into some external Spark cluster.
+You have got your data sitting in Snowflake. Secure, governed, well-managed. But then to actually process it, you have to pull it out into some external Spark environment. And that is where things start falling apart.
 
-And that is where things get messy.
+First, data is moving around. That is slow, that is expensive, and every time data leaves your perimeter, you are taking a governance risk. Who has access? Where is it going? Is it encrypted in transit? These are real questions.
 
-First, you are moving data around. That is slow, that is expensive, and every time data leaves your perimeter, you are taking a governance risk.
+Second, look at what your engineers are actually spending their time on. They are not building pipelines. They are provisioning compute infrastructure. They are tuning clusters, picking partition keys, running compaction. Manual compute versioning. It is a lot of overhead that has nothing to do with the actual business problem.
 
-Second, your engineers are not actually building pipelines. They are spending their time setting up clusters, tuning configurations, picking partition keys, managing compaction. It is a lot of overhead.
+And on top of all that, costs are unpredictable. Clusters sitting idle, over-provisioned nodes, surprise bills at the end of the month.
 
-And third, the costs are all over the place. Clusters sitting idle, over-provisioned nodes, surprise bills at the end of the month.
+So the question becomes simple. What if you could just process the data right where it lives? No extraction, no movement, no extra infrastructure. What if the processing came to the data instead of the data going to the processing?
 
-So the question is simple. What if you could process the data right where it lives? No extraction, no movement, no extra infrastructure?
+That is exactly the problem we set out to solve.
 
-That is exactly what Snowpark Connect gives you.
 
+SLIDE 5 - SNOWPARK CONNECT FOR APACHE SPARK (Section Header)
 
-SLIDE 7 - BUILDING ON SPARK CONNECT
+And this is the answer. Snowpark Connect for Apache Spark.
 
-Now here is the cool part. We did not invent some proprietary thing. We built on top of something that already exists in the Spark world.
 
-In Spark 3.4, the community introduced something called Spark Connect. It basically splits Spark into a thin client and a server. Your PySpark app is the client. It builds a plan and sends it over to a server for execution.
+SLIDE 6 - BUILDING ON SPARK CONNECT
 
-Usually that server is a Spark cluster. But with Snowpark Connect, Snowflake becomes the server. Your app talks the standard Spark protocol, and Snowflake does all the heavy lifting behind the scenes.
+Now, to understand what we built, let me give you a little background. Because we did not just make up something proprietary. We built on top of something the Spark community already created.
 
-So it is not some hack or workaround. It is built on the open standard.
+In Spark 3.4, the Apache Spark project introduced something called Spark Connect. And what Spark Connect did was pretty clever. It took the old monolithic Spark architecture and split it into a clean client-server model.
 
+On the left, you have the client side. Your applications, your IDEs, your notebooks, your programming languages. This is where you write code. This part stays exactly the same.
 
-SLIDE 8 - SNOWPARK CONNECT OVERVIEW
+On the right, you have the server side. The optimizer, the scheduler, the execution engine. This is where the actual processing happens.
 
-Alright, so what exactly can you run?
+And the two talk to each other through a thin API layer called the Spark Connect API.
 
-Three big things. And honestly, these three cover like 90 plus percent of what people actually do with Spark.
+Now here is the breakthrough. Because of this clean separation, you can swap out the server. You do not have to use a Spark cluster as the backend anymore.
 
-First, Spark DataFrames. So your selects, filters, groupBys, joins, window functions. All of that works.
+And that is exactly what we did.
 
-Second, Spark SQL. You can run your spark.sql() queries, your CREATE TABLEs, your JOINs, aggregations, all standard SQL through the Spark API.
 
-Third, Python UDFs. Your custom Python logic. You write it, decorate it, and it runs natively on Snowflake.
+SLIDE 7 - SNOWPARK CONNECT FOR APACHE SPARK (Overview)
 
-And all of this runs on the Snowflake engine. Same vectorized engine that powers your SQL queries. Auto-scaling, auto-suspend, zero cluster management. You just pick a warehouse size and go.
+We replaced the Spark server with the Snowflake engine.
 
+So your PySpark code, your Spark SQL, your UDFs, they all stay on the client side. Nothing changes there. You keep writing Spark the way you always have.
 
-SLIDE 9 - UNDERSTANDING SNOWPARK EXECUTION
+But instead of sending that work to a Spark cluster, it goes to Snowflake. And Snowflake's engine executes it. The same engine that runs your SQL queries, your dbt models, everything.
 
-And just to be clear, Snowpark Connect is not replacing anything. It is a new addition to the family.
+So you get zero operational overhead. No clusters to manage, no nodes to tune, no infrastructure to babysit.
 
-You have already got pandas on Snowflake for the pandas lovers. Snowpark DataFrames for native Python development. UDFs and Stored Procedures for custom logic.
+You get ease of use. Just point your Spark code at Snowflake and run it.
 
-And now you also have the Spark Client for teams that already have a ton of PySpark code and do not want to rewrite it.
+And you get superior price-performance. Because Snowflake's vectorized engine is just faster and cheaper for this kind of work.
 
-All of these run on the same Snowflake warehouse. Same engine, same governance, same bill.
+Your Spark code, Snowflake's engine. Zero rewrite, zero clusters.
 
-So the rule of thumb is pretty simple. New projects? Use Snowpark. Got existing Spark code? Use Snowpark Connect.
 
+SLIDE 9 - SNOWFLAKE FOR DATA ENGINEERING
 
-SLIDE 10 - CUSTOMER QUOTE (CTC)
+And just to zoom out for a second. Snowpark Connect is not sitting out there on its own. It fits into the broader Snowflake data engineering platform.
 
-Now do not just take my word for it. Let me share some real numbers.
+You have got ingestion with Snowpipe and Snowpipe Streaming. Transformation with Dynamic Tables, dbt Projects, Tasks, Stored Procedures, pandas on Snowflake. And now Snowpark Connect for your Spark workloads.
 
-Customers on average are seeing 54 percent cost savings when they move from managed Spark to Snowflake.
+You have got delivery through Sharing and Marketplace. And the workspace includes Notebooks, VS Code integration, Git integration, Database Change Management.
 
-One customer saved 800 thousand dollars a year just by not having to move data out of Snowflake and back in.
+So we are meeting developers wherever they are. Whether you are a SQL person, a Python person, a Spark person, or a pandas person. The tooling is there. And the beauty is it all runs on the same engine.
 
-And here is what David Trumbell, Head of Data Engineering at CTC, said. He said, with fewer ephemeral failures and higher visibility in Snowflake, we have a platform that is much easier and cost-effective to operate than managed Spark.
 
+SLIDE 10 - UNDERSTANDING THE DIFFERENCE (Connector vs Connect)
 
-SLIDE 11 - GROWING ADOPTION
+Now this is an important distinction. People sometimes confuse the Spark Connector and Snowpark Connect. So let me be really clear.
 
-And this is not just a handful of customers. We have seen over 30 production-scale workloads. We are talking 3 billion rows of data per workload. Over 1000 lines of code per workload.
+The old Spark Connector, on the left. It moves data OUT of Snowflake into your Spark or Databricks cluster. That means data movement, fragmented governance, additional cost. Your processing happens outside. The data travels to the compute.
 
-These are real, mission-critical pipelines from early adopters. This is not toy data. This is serious scale.
-
-
-SLIDE 12 - CUSTOMER QUOTE (VideoAmp)
-
-Here is another great quote. John Adams, Senior VP of Architecture at VideoAmp, said: The best part is that we did not have to sacrifice critical engineering time to migrate workloads with Snowpark Connect. They just worked.
-
-And that is the whole point. You do not rewrite. You just reconnect.
-
-
-SLIDE 13 - CUSTOMER QUOTE (Booking.com - Dimitar Nedev)
-
-And this one is my favorite. Booking.com. They have nearly 3,000 Spark pipelines. Massive estate.
-
-Dimitar Nedev, their Principal Data Engineer, said: Switching from the previous Snowflake connector to Snowpark Connect delivered massive results. We saw the runtime drop from 1.5 hours all the way down to about 25 minutes.
-
-That is a 70 percent reduction in runtime. From an hour and a half to 25 minutes. Just by swapping the connection.
-
-
-Slide 14 is HIDDEN. It is the detailed Booking.com case study slide. It is marked INTERNAL. You will NOT see it during the presentation. The key points from it were already covered in Slide 13.
-
-
-SLIDE 15 - FASTER PERFORMANCE (Internal Benchmark)
-
-So let us look at the numbers. On internal benchmarks derived from TPCx-BB workloads, Snowpark Connect is 3x faster.
-
-And just to be clear, these are not made up benchmarks. These are based on actual workloads run in October 2025.
-
-
-SLIDE 16 - TCO OVERVIEW
-
-Now here is where it gets really interesting from a cost perspective.
-
-The big insight is that 60 to 70 percent of engineering effort in Spark shops goes to operational maintenance. That is not building pipelines. That is babysitting infrastructure.
-
-Snowpark Connect flips that. You get at least 10 to 25 percent reduction in direct compute costs. Plus a 20 to 30 percent strategic productivity gain because your engineers can actually build things instead of managing clusters.
-
-Over three years, that adds up to a 15 to 28 percent total cost of ownership reduction.
-
-
-SLIDE 17 - INDEPENDENT STUDY (Tredence)
-
-And this is not just our internal data. Tredence did an independent study comparing Snowpark Connect against a managed Spark provider.
-
-The result? 3x faster and 8x greater cost savings. They ran 100 TPC-DS queries across 3 iterations. The numbers speak for themselves.
-
-
-Slide 18 is HIDDEN. It is the Salesforce case study marked INTERNAL. You will NOT see it. The key point was a 2XL Snowflake warehouse outperforming a 6XL Spark cluster, which is a 3x efficiency gain.
-
-
-SLIDE 19 - ROADMAP (Spark DataFrames, SQL, UDFs to Snowflake)
-
-This slide shows the roadmap for bringing Spark DataFrames, SQL, and UDFs to Snowflake. You can see the progression from development to private preview, public preview, and GA.
-
-The key message here is that this is actively being invested in. The coverage is growing.
-
-
-Slides 20, 21, and 22 are HIDDEN. They are the compete slides marked CONFIDENTIAL and under NDA. You will NOT see them in the presentation. But if someone asks about Databricks or EMR comparison, the short version is: lower TCO, faster development, scalable governance, and no cluster management overhead.
-
-
-SLIDE 23 - FEATURE HIGHLIGHTS
-
-Now let me walk you through some of the feature highlights.
-
-
-SLIDE 24 - API AND LANGUAGE SUPPORT
-
-So right now, Snowpark Connect supports Spark 3.5 and above, but below 4.0. It works with Python 3.10, 3.11, and 3.12. And Java 11 and 17.
-
-The APIs that are supported are Spark DataFrames, Spark SQL, and UDFs.
-
-For languages, Python is fully GA. Scala and Java are in Preview.
-
-And one nice thing, there is no hard dependency on Spark Connect itself as long as you are on a compatible version.
-
-
-SLIDE 25 - DEVELOPER EXPERIENCE
-
-This shows the developer experience. You can use your favorite tools. Jupyter Notebooks, VS Code, Apache Airflow, Snowflake Notebooks, and Spark Submit for batch jobs.
-
-So nothing changes in your workflow. You keep using whatever you are used to. You just connect to Snowflake instead of a cluster.
-
-
-SLIDE 26 - EXECUTION HISTORY UI
-
-And once your jobs are running on Snowflake, you get full visibility. There is an execution history UI where you can see what ran, when it ran, and how it performed. No more black-box Spark clusters.
-
-
-SLIDE 27 - SPARK CONNECTOR vs SNOWPARK CONNECT
-
-Okay, this is an important distinction. People sometimes confuse these two, so let me be really clear.
-
-The old Spark Connector moves data OUT of Snowflake into your Spark cluster. That means data movement, fragmented governance, extra costs.
-
-Snowpark Connect keeps everything IN Snowflake. Your Spark code runs on the Snowflake engine. No data movement. Unified. Performant. Open.
+Snowpark Connect, on the right. Everything stays IN Snowflake. Your Spark code runs on the Snowflake engine. No data movement. Unified governance. Performant. And open, because it is standard PySpark.
 
 Think of it this way. Connector means data moves to you. Connect means you move to the data.
 
+And look at the comparison. With the old connector, you have data movement, fragmented security, no openness. With Snowpark Connect, you get open, unified, and performant. All three checkmarks.
 
-SLIDE 28 - HOW IT WORKS (Section Header)
 
-Let us look under the hood.
+SLIDE 11 - HOW IT WORKS (Section Header)
 
+So how does all of this actually work? Let us look under the hood.
 
-SLIDE 29 - INTERACT WITH SPARK CODE, EXECUTE WITH SNOWPARK
 
-This is the big picture. All you do is update the connection. Then you use your existing Spark code. That is it.
+SLIDE 12 - UNDERSTANDING SNOWPARK EXECUTION
 
-It really is that simple. Change the connection string, not the code.
+Before we get into Connect specifically, let me show you the Snowpark execution model. Because this is what powers everything.
 
+On the server side, you have Snowflake's elastic compute runtime, the virtual warehouse, and the vectorized query engine. This engine processes data in batches, column by column, which is why it is so fast.
 
-SLIDE 30 - HOW IT WORKS UNDER THE HOOD
+Now on the client side, Snowflake supports multiple ways to talk to this engine.
 
-Let me break it down step by step.
+You have got Snowpark DataFrames for Python developers. That is the native DataFrame-style API.
 
-Step one, your client runs standard open source Spark Connect.
+You have got pandas on Snowflake for data scientists who think in pandas.
 
-Step two, Spark Connect sends the query plan to Snowflake.
+You have got UDFs and Stored Procedures for custom code.
 
-Step three, Snowpark Connect interprets that plan.
+And now, you also have the Spark Client. This is Snowpark Connect. It lets you run Apache Spark DataFrames, SQL, and UDFs on the same engine.
 
-Step four, it optimizes the plan for Snowflake's engine. Things like query simplification, caching, metadata management.
+All of these are just different doorways into the same house. Same engine, same governance, same bill. The only thing that changes is which API you prefer to speak.
 
-Step five, it hands the execution off to Snowpark.
+The rule of thumb is simple. New projects? Use Snowpark. Got existing Spark code? Use Snowpark Connect. We want to meet the developer where they are, and bring them time and cost performance benefit.
 
-Step six, Snowpark runs it on Snowflake's vectorized engine.
+So now that you have seen all these doorways, let me take you through one of them. Let me show you what actually happens when your Spark code walks through that Snowpark Connect door.
 
-So Snowflake is literally speaking the Spark language. You do not have to learn anything new.
 
+SLIDE 13 - SNOWPARK CONNECT: HOW IT WORKS UNDER THE HOOD
 
-SLIDE 31 - GETTING STARTED (Section Header)
+Okay, this is the architecture slide. Let me walk you through the six steps.
 
-Let us talk about getting started.
+Step one. Your client runs standard open source Spark Connect. Nothing proprietary. Standard PySpark.
 
+Step two. Spark Connect sends the Apache Spark query plan to Snowflake. This is an unresolved logical plan, sent over gRPC. Just like it would send to any Spark server.
 
-SLIDE 32 - IDENTIFYING IDEAL WORKLOADS
+Step three. Snowpark Connect interprets that plan. It has a SparkSQL parser, semantic reasoning, and metadata management built in.
 
-So what is a good fit?
+Step four. It optimizes the plan for Snowflake. Query simplification, caching, all the smart stuff that makes it fast.
 
-Currently supported: Batch ETL workloads in SQL or Python. Spark 3.5.x. Using the DataFrame API or SparkSQL. Jupyter Notebooks or terminal as the client. Data stored in Snowflake or Open Lakehouse with Iceberg tables.
+Step five. It hands the execution off to Snowpark.
 
-On the roadmap: Snowflake Notebooks as a client, Spark Submit for orchestration, Java and Scala support.
+Step six. Snowpark runs the optimized query on Snowflake's vectorized engine.
 
-What is NOT a good fit right now? If your code has RDDs, MLlib, or GraphX. For ML, use Snowpark ML instead. For streaming, use Snowpipe Streaming or OpenFlow.
+So internally, we receive the code from your Jupyter notebook or VS Code, it comes in through the Spark Connect API, and on our end we interpret it and convert it into an optimized SQL query plan. That is the beauty of Snowpark Connect. The power of the Snowflake engine comes together with the familiarity of the Spark API.
 
+And your data can live in Snowflake tables, internally or externally managed Iceberg tables, or cloud object storage. Snowflake speaks Spark so you do not have to speak Snowflake.
 
-SLIDE 33 - SNOWPARK MIGRATION ACCELERATOR
 
-And here is something really helpful. If you are not sure whether your code is compatible, there is a free tool called the Snowpark Migration Accelerator.
+SLIDE 14 - INTERACT WITH SPARK CODE, EXECUTE WITH SNOWPARK
 
-You point it at your Spark codebase. It analyzes everything. It gives you a compatibility score. It tells you which files are ready to go and which ones might need a tweak.
+And at the end of the day, it really comes down to this. Two steps.
 
-99 percent of real-world Spark code works out of the box. The 1 percent has documented workarounds.
+Step one. Update the connection. Point your Spark session at Snowflake instead of a cluster.
 
+Step two. Use your existing Spark code. That is it.
 
-SLIDE 34 - THANK YOU
-
-Alright, that wraps up the slides. Thank you.
-
-But before we open it up for questions, let me actually show you this in action.
-
-
-Slides 35, 36, 37, and 38 are HIDDEN. They are appendix slides covering FAQ, transformation portfolio, discovery guide, and pipeline overview. You will NOT see them during the presentation. Use them as reference if specific questions come up.
-
-
-========================================
-PART 2 - LIVE DEMO
-========================================
-
-Alright, enough slides. Let me show you this for real.
-
-I have got a side-by-side comparison set up. Three pairs of Python scripts and one pair of Jupyter notebooks. In each pair, one runs on Classic Spark with a local cluster, the other runs on Snowpark Connect with Snowflake.
-
-The Python scripts show what works identically. The notebooks show what does not work and what Snowflake offers instead.
-
-Let us walk through them.
-
-
-DEMO 1 - SESSION SETUP
-Open files: 01_session_setup_classic.py and 01_session_setup_snowpark_connect.py
-
-Let us start with the basics. How do you create a Spark session?
-
-On the Classic Spark side, you write SparkSession.builder.master("local"), set your app name, configure shuffle partitions, call getOrCreate. You are basically telling Spark, here is my cluster, here is how to run it.
-
-On the Snowpark Connect side? Two lines. Import snowpark_connect, call init_spark_session. Done. It reads your Snowflake connection from a config file and you are connected.
-
-That is the only thing that changes. From here on out, the code is identical.
-
-[ACTION: Run both scripts side by side]
-
-Same output. Same DataFrame. Different engine. One runs on your laptop. The other runs on Snowflake.
-
-Size a warehouse, not a cluster.
-
-
-DEMO 2 - DATAFRAME OPERATIONS
-Open files: 02_dataframe_ops_classic.py and 02_dataframe_ops_snowpark_connect.py
-
-This is the fun part. I am going to run seven different DataFrame operations. These are the things you do every single day in Spark.
-
-Creating DataFrames. Selecting and filtering columns. Adding derived columns like a bonus calculation. GroupBy with aggregations, headcount, average salary, max salary. Joining two DataFrames. Sorting with orderBy. And window functions, ranking within departments.
-
-Now look at the two files side by side. The only difference is the first few lines where you set up the session. Everything else, and I mean everything, is character for character identical.
-
-[ACTION: Show both files side by side, scroll through to show they are the same]
-
-Let me run the Classic version.
-
-[ACTION: Run 02_dataframe_ops_classic.py]
-
-And now the Snowpark Connect version.
-
-[ACTION: Run 02_dataframe_ops_snowpark_connect.py]
-
-Same results. Same numbers. Same output. But one ran on your local JVM and the other ran on Snowflake's vectorized engine with auto-scaling, built-in governance, and per-second billing.
-
-No tuning knobs to turn. Snowflake optimizes for you. That is the point.
-
-
-DEMO 3 - SPARK SQL AND PYTHON UDFs
-Open files: 03_sql_and_udf_classic.py and 03_sql_and_udf_snowpark_connect.py
-
-This is the one that usually surprises people.
-
-I am going to run spark.sql queries, create temp views, chain SQL statements together, and then write Python UDFs. One UDF classifies salaries into high, medium, and low. Another one calculates name length.
-
-And again, the code is identical except for the session setup.
-
-One thing I will call out. On Snowpark Connect, UDFs are lazily serialized. So if there is a serialization issue, you will see it when you call show or collect, not when you define the UDF. The code is the same. Just a slight timing difference on when errors surface.
-
-[ACTION: Run 03_sql_and_udf_classic.py]
-
-[ACTION: Run 03_sql_and_udf_snowpark_connect.py]
-
-Same SQL. Same UDFs. Same results. Different engine.
+You are literally pairing your existing Spark environment with the powerful Snowflake engine for your DataFrame operations. The code stays the same. The engine changes. The performance improves.
 
 Change the connection string, not the code.
 
 
-DEMO 4 - WHAT IS NOT SUPPORTED (JUPYTER NOTEBOOKS)
-Open notebooks: 04_unsupported_classic.ipynb and 04_unsupported_snowpark_connect.ipynb
+SLIDE 15 - FEATURE HIGHLIGHTS (Section Header)
 
-Okay now let us have the honest conversation. We have shown you what works. Let me show you what does not work, and honestly, why that is totally fine.
+Now let me walk you through some of the feature highlights. What can you actually do today?
 
-I have got two Jupyter notebooks open side by side. Same code in both. One runs on Classic Spark, the other on Snowpark Connect. We are going to test five things that do not work on Snowpark Connect.
 
+SLIDE 16 - GROWING API AND LANGUAGE SUPPORT
 
-Notebook Cell 1 - Session Setup
+So in terms of compatibility. Snowpark Connect supports Apache Spark 3.5 and above, below 4.0.
 
-First, let us get both sessions up. Classic Spark on the left. Snowpark Connect on the right. Both connect fine. Both can create DataFrames. No surprises here.
+For Python, it works with 3.10, 3.11, and 3.12. Java 11 and 17 are also supported.
 
-[ACTION: Run session cells on both notebooks]
+The core APIs are Spark DataFrames, Spark SQL, and UDFs. These cover the vast majority of what people actually do with Spark.
 
+For languages, Python is fully GA today. Scala and Java are in Preview.
 
-Notebook Cell 2 - RDDs
+And one nice thing to note. There is no hard dependency on Spark Connect itself. As long as you are on a compatible Spark version, you are good to go.
 
-Okay, RDDs. This is Spark's original low-level API. Parallelize, map, filter, reduce.
+PySpark today, Java and Scala on the roadmap. But honestly, most Spark shops are Python-first anyway.
 
-On Classic Spark, everything works. I get squared numbers, filtered evens, a sum, a flatMap result.
 
-[ACTION: Run the RDD cell on Classic notebook]
+SLIDE 17 - WORK IN FAVORITE TOOLS
 
-Now the same code on Snowpark Connect. And boom. It fails. sparkContext is not implemented.
+Developer experience is smooth. You can use your favorite tools. Jupyter Notebooks, VS Code, Apache Airflow, Snowflake Notebooks, and Spark Submit for batch jobs.
 
-[ACTION: Run the RDD cell on Snowpark Connect notebook]
+Nothing changes in your day-to-day workflow. Use your IDE, your orchestrator, your notebook. Just connect to Snowflake.
 
-And that makes sense. RDDs need SparkContext, which is not part of the Spark Connect protocol. It was never included in the client-server split.
+So your team does not have to learn anything new. They do not have to change their habits. They keep using whatever they are comfortable with. They just point at a different backend. That is the whole idea.
 
-But honestly, nobody should be writing new RDD code anyway. DataFrames are faster, they are optimizable, and they work everywhere. If you have legacy RDD code, this is a great excuse to clean it up.
 
-RDDs are legacy. DataFrames are the future. And they are fully supported.
+SLIDE 18 - EXECUTION HISTORY UI
 
+And once your jobs are running on Snowflake, you get something you probably never had with your Spark clusters. Full visibility.
 
-Notebook Cell 3 - Structured Streaming
+There is an execution history UI built right into Snowflake. You can see every Spark job that ran, the query ID tied to it, which warehouse it used, the duration breakdown, and the resources consumed. If something ran slow last Tuesday, you can go back and see exactly why.
 
-Next up, Structured Streaming. On Classic Spark, I set up a rate source, write to console, let it run for a few seconds. Works perfectly. You can see the batches coming through.
+With managed Spark, this kind of observability usually means bolting on Datadog or Ganglia or some custom logging. Here it is just built in. Your ops team will love this.
 
-[ACTION: Run the Streaming cell on Classic notebook]
 
-On Snowpark Connect, readStream does not really do what you expect. It returns a DataFrame that says isStreaming false. The streaming concept just does not translate.
+SLIDE 19 - POC RESULTS (Section Header)
 
-[ACTION: Run the Streaming cell on Snowpark Connect notebook]
+Okay, enough about features. Let us talk about real numbers. Because at the end of the day, that is what matters.
 
-But here is the thing. Snowflake has purpose-built tools for this. Snowpipe Streaming for real-time ingestion. Dynamic Tables for incremental processing. OpenFlow for Kafka and CDC connectors.
 
-Streaming belongs in OpenFlow. Processing belongs in Snowpark Connect.
+SLIDE 20 - FASTER PERFORMANCE WITH SNOWPARK CONNECT
 
+On internal benchmarks derived from TPCx-BB workloads, Snowpark Connect is 3x faster than traditional managed Spark.
 
-Notebook Cell 4 - MLlib
+And to be clear, these are not synthetic benchmarks. These are based on actual workloads run in October 2025 derived from the TPCx-BB specifications.
 
-This one matters for data science teams. On Classic Spark, I build a full ML pipeline. VectorAssembler, Logistic Regression, fit the model, get predictions. Works great.
+3x faster. Same code. Different engine.
 
-[ACTION: Run the MLlib cell on Classic notebook]
 
-On Snowpark Connect, it fails. pyspark.ml is not supported.
+SLIDE 21 - TCO OVERVIEW
 
-[ACTION: Run the MLlib cell on Snowpark Connect notebook]
+Now here is where it gets really interesting from a cost and total cost of ownership perspective.
 
-But Snowflake has you covered. Snowpark ML lets you train models in Python right inside Snowflake. Model Registry lets you version and deploy them. And Cortex ML Functions give you built-in forecasting, anomaly detection, and classification with zero code.
+The big insight is this. In most Spark shops, 60 to 70 percent of engineering effort goes to operational maintenance. That is not building pipelines. That is babysitting infrastructure. Tuning clusters, managing versions, dealing with ephemeral failures.
 
-MLlib is do-it-yourself ML. Snowpark ML is managed ML. Same Snowflake bill.
+Snowpark Connect flips that.
 
+Direct savings. At least 10 to 25 percent reduction in direct cloud compute costs at scale.
 
-Notebook Cell 5 - SparkContext (Broadcast, Accumulator, textFile)
+The shift. All that wasted time maintaining infrastructure converts into visible, elastic, optimized compute management.
 
-SparkContext primitives. Broadcast variables, accumulators, reading text files. All of these are low-level tools from the RDD era.
+Strategic ROI. A 20 to 30 percent productivity gain because your engineers can actually build things instead of managing clusters.
 
-On Classic Spark, they all work fine.
+Over a three-year period, that adds up to a 15 to 28 percent total cost of ownership reduction.
 
-[ACTION: Run the SparkContext cell on Classic notebook]
+Job done? Warehouse sleeps. That is money back in your pocket.
 
-On Snowpark Connect, all three fail with the same error. sparkContext is not implemented.
 
-[ACTION: Run the SparkContext cell on Snowpark Connect notebook]
+SLIDE 22 - INDEPENDENT STUDY (Tredence)
 
-But you really do not need any of these. Broadcast joins? Snowflake's optimizer handles that automatically. Accumulators? Just use SQL aggregations. Reading text files? spark.read.csv or spark.read.text works perfectly fine on Snowpark Connect.
+And this is not just our own internal data. Tredence did a fully independent study comparing Snowpark Connect against a managed Spark provider.
 
+They ran 100 TPC-DS queries across 3 iterations.
 
-Notebook Cell 6 - Repartition and Coalesce
+The result? 3x faster on average. And 8x greater cost savings.
 
-Last one, and this is a sneaky one. On Classic Spark, repartition and coalesce actually change the number of partitions. You can see it go from 10 to 8 to 2.
+These numbers speak for themselves. This is a third party saying it, not us.
 
-[ACTION: Run the Repartition cell on Classic notebook]
 
-On Snowpark Connect, the same calls do not throw an error. They just silently do nothing. The data is still there. Row count is still 100. But the partition changes never happened.
+SLIDE 23 - GROWING ADOPTION AT SCALE
 
-[ACTION: Run the Repartition cell on Snowpark Connect notebook]
+And this is not experimental anymore. Snowpark Connect is being used at serious scale.
 
-And honestly, that is the right behavior. You should not have to think about partition counts, shuffle sizes, or data skew. Snowflake's optimizer handles all of that for you automatically.
+Over 30 production-scale workloads. 3 billion rows of data per workload. Over 1000 lines of code per workload.
 
+These are real, mission-critical pipelines from early adopters. People trusted this with their most demanding data engineering tasks. And it delivered.
 
-Notebook Summary
 
-So here is the honest scorecard.
+SLIDE 24 - IDENTIFYING WORKLOAD (Section Header)
 
-RDDs. Work on Classic. Fail on Snowpark Connect. Use the DataFrame API instead.
+So by now you are probably thinking, great, this sounds amazing. But is it right for my workload? How do I know which Spark jobs to move first?
 
-Structured Streaming. Works on Classic. Not supported on Snowpark Connect. Use Snowpipe Streaming or Dynamic Tables.
 
-MLlib. Works on Classic. Not supported on Snowpark Connect. Use Snowpark ML or Cortex ML.
+SLIDE 25 - CURRENTLY SUPPORTED / IDEAL WORKLOADS
 
-SparkContext stuff like broadcast and accumulators. Works on Classic. Not available on Snowpark Connect. Snowflake handles it for you.
+Here is how to think about it.
 
-Repartition and Coalesce. Works on Classic. Silently ignored on Snowpark Connect. Snowflake auto-optimizes.
+Currently supported and ideal. Data engineering and feature engineering workloads. Batch ETL in SQL, Python, Java or Scala. Spark 3.5.x releases. Using the DataFrame API or SparkSQL. Clients like Jupyter Notebook or terminal. And data stored in Snowflake or an open lakehouse with Iceberg tables.
 
-Bottom line. If your code uses DataFrames, SQL, and Python UDFs, it works with zero changes. If it uses RDDs, Streaming, or MLlib, those parts need Snowflake-native replacements. But honestly, those replacements are usually better than what you had.
+On the roadmap. Snowflake Notebooks as a client, orchestration with Spark Submit, and full Java and Scala GA.
 
+Not a good fit right now? If your code has RDDs, MLlib, or GraphX. Those need Snowflake-native replacements. For ML, use Snowpark ML. For streaming, use Snowpipe Streaming or OpenFlow.
 
-========================================
-WRAP-UP
-========================================
+But here is the thing. The ANSI standard code changes for most Spark workloads are extremely minimal. If your code is standard PySpark using DataFrames and SQL, it is going to work.
 
-So let me bring it all together.
 
-What changes? Just the session setup. That is the only thing.
+SLIDE 26 - SNOWPARK MIGRATION ACCELERATOR
 
-What stays the same? Everything else. DataFrame API. spark.sql queries. Python UDFs. createDataFrame. show. collect. Temp views. All of it.
+And if you are not sure whether your code is compatible, we have got a free tool for that. The Snowpark Migration Accelerator.
 
-One line changes. Everything else stays.
+You download it, point it at your Spark codebase, and it analyzes everything. It gives you a compatibility score. It tells you exactly which files are fully compatible and ready to go, and which ones might need a small tweak.
 
-And what do you get for that one line change?
+So even the evaluation part of the migration becomes fast. You do not have to manually go through thousands of lines of code. The tool does the heavy lifting.
 
-Zero cluster management. No more provisioning, tuning, or version upgrades.
+99 percent of real-world Spark code works. The 1 percent has documented workarounds.
 
-Per-second billing. Your warehouse goes to sleep the moment your job is done.
 
-Built-in governance. RBAC, masking policies, row access policies, audit trails. All there from day one.
+SLIDE 27 - SUCCESS STORIES (Section Header)
 
-3x to 5.6x faster performance on real workloads.
+Do not just take my word for it. Let me share what real customers are saying.
 
-41 to 54 percent cost savings compared to managed Spark.
 
-And zero vendor lock-in. Your code is standard PySpark. It runs on any Spark Connect server. And your data can sit on open Iceberg tables.
+SLIDE 28 - CTC (David Trumbell Quote)
 
-Your Spark code, Snowflake's engine. Zero rewrite, zero clusters.
+David Trumbell, Head of Data Engineering and Principal Engineer at CTC, said: Now with fewer ephemeral failures and higher visibility in Snowflake, we have a platform that is much easier and cost-effective to operate than managed Spark.
 
-Any questions?
+And the numbers back it up. Customers on average are seeing 54 percent cost savings when they move from managed Spark to Snowflake. And CTC specifically saved 800 thousand dollars a year just by eliminating data movement out of Snowflake and back in.
+
+Think about that. 800K saved just by not moving data around. That is the cost of data movement that you are paying today and probably do not even realize it.
+
+Ease of use meets powerful vectorized engine. That is the story.
+
+
+SLIDE 29 - VIDEOAMP (John Adams Quote)
+
+Here is another one. John Adams, Senior VP of Architecture at VideoAmp.
+
+He said: The best part is that we did not have to sacrifice critical engineering time to migrate workloads with Snowpark Connect. They just worked.
+
+And that is the whole point. You do not rewrite. You do not refactor. You just reconnect. And it works.
+
+No forklift migration. Adopt incrementally, team by team.
+
+
+SLIDE 30 - BOOKING.COM (Dimitar Nedev Quote)
+
+And this one is my favorite. Booking.com. They have nearly 3,000 Spark data pipelines. Massive estate.
+
+Dimitar Nedev, their Principal Data Engineer on the AI and Insights Platform, said: Switching from the previous Snowflake connector to Snowpark Connect delivered massive results. We saw the runtime drop from 1.5 hours all the way down to about 25 minutes.
+
+Let that sink in. 1.5 hours to 25 minutes. Just by switching from the old connector to Snowpark Connect. That is almost a 4x improvement. Same code. Same data. Different execution path.
+
+
+SLIDE 31 - THANK YOU
+
+Alright, that wraps up the presentation. Thank you all for your time.
+
+So let me leave you with this. Snowpark Connect is about a simple idea. We want to meet you where you are. If you are a Spark developer, if you have invested years in PySpark code, we do not want you to throw that away. We want you to take that code and run it on a better engine.
+
+Your Spark code. Snowflake's engine. Zero rewrite. Zero clusters.
+
+Production-ready since November 2025. And proven at scale by companies like CTC, VideoAmp, and Booking.com.
+
+If you are interested, grab the Snowpark Migration Accelerator. Run it against your codebase. See the compatibility score.
+
+But before we open it up for questions, let me actually show you this in action. I have got a live demo ready where we run the same Spark code side by side, one on a classic Spark cluster and the other on Snowpark Connect, so you can see exactly what changes and what stays the same.
 
 
 ========================================
@@ -501,9 +361,18 @@ If someone has compatibility concerns, you say:
 If someone asks about pricing, you say:
 One bill. Per-second. No Spark license. No cluster overhead.
 
+If someone asks why not just use Snowpark, you say:
+New projects, use Snowpark. Existing Spark code, use Snowpark Connect. Same engine underneath.
+
+If someone asks about data movement, you say:
+Process data where it lives. No extract, no egress, no lag.
+
+If someone asks what development tools work, you say:
+Use your IDE, your orchestrator, your notebook. Just connect to Snowflake.
+
 
 ========================================
 END OF SCRIPT
 ========================================
 
-Total time: about 25 to 30 minutes. 12 to 15 for the pitch slides, 13 to 15 for the live demo.
+Total time for slides: approximately 20 to 25 minutes covering slides 1 through 31.

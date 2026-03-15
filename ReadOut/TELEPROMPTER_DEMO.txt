@@ -1,0 +1,40 @@
+SNOWPARK CONNECT — LIVE DEMO SCRIPT
+
+
+DEMO 1 — SESSION SETUP (01_session_setup_*.py)
+
+[Open both side by side]
+
+Classic Spark: 5 lines — master, appName, config, getOrCreate. You are configuring infrastructure.
+Snowpark Connect: 2 lines — import snowpark_connect, init_spark_session. Done.
+
+[Run both] Same output. This is the only thing that changes across the entire demo.
+
+
+DEMO 2 — IT ALL WORKS (02_dataframe_ops_*.py + 03_sql_and_udf_*.py)
+
+[Scroll through 02 files side by side] Seven DataFrame ops — identical code. Only the session differs.
+[Run both] Same results.
+
+[Scroll through 03 files side by side] Spark SQL, temp views, Python UDFs — identical code.
+One gotcha: UDFs on Snowpark Connect are lazily serialized. Errors show at show() time, not at definition.
+[Run both] Same results.
+
+
+DEMO 3 — WHAT DOES NOT WORK (04_unsupported_*.ipynb)
+
+[Open both notebooks. Run each cell on Classic first, then Snowpark Connect]
+
+RDDs — fails. SparkContext not in Spark Connect protocol. Use DataFrames instead.
+Streaming — fails. Use Snowpipe Streaming / Dynamic Tables / OpenFlow.
+MLlib — fails. Use Snowpark ML / Cortex ML.
+SparkContext (broadcast, accumulator) — fails. Snowflake handles broadcasts automatically.
+Repartition — silently ignored. Snowflake auto-optimizes. That is correct behavior.
+
+
+WRAP-UP
+
+Works: DataFrames, SQL, UDFs — zero code changes.
+Does not work: RDDs, Streaming, MLlib — Snowflake-native alternatives exist for each.
+
+One connection change. Everything else stays.
